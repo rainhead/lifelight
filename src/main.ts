@@ -15,6 +15,8 @@ import Point from 'ol/geom/Point.js';
 import Feature from 'ol/Feature.js';
 import { queryStringAppend } from './queryStringAppend.ts';
 import { observationStyle } from './style.ts';
+import { Observation, ResultPage } from './inaturalist.ts';
+import { eachObservation, upsertObservations } from './db.ts';
 
 initPWA(document.body);
 
@@ -50,7 +52,7 @@ new OpenLayersMap({
 // });
 
 const baseURL = 'https://api.inaturalist.org/v2/observations';
-const fieldspec = "(geojson:!t,photos:(url:!t),taxon:(name:!t,preferred_common_name:!t),taxon_geoprivacy:!t,time_observed_at:!t,uri:!t)";
+const fieldspec = "(id:!t,geojson:!t,photos:(url:!t),updated_at:!t,taxon:(name:!t,preferred_common_name:!t),taxon_geoprivacy:!t,time_observed_at:!t,uri:!t)";
 
 async function fetchPage<T>(url: string, page: number) {
   console.log(`fetching page ${page}`);
@@ -76,10 +78,12 @@ async function* fetchAllPages<T>(url: string) {
   }
 }
 
-function myObservationsURL() {
+// updated_since: anything you can pass to Date.parse
+function myObservationsURL(updated_since: Date) {
   const url = queryStringAppend(baseURL, {
     fields: fieldspec,
     user_id: 'rainhead',
+    updated_since: updated_since.toISOString(),
     order_by: 'updated_at',
     order: 'desc',
     per_page: 200,
@@ -87,35 +91,30 @@ function myObservationsURL() {
   return url;
 }
 
-async function main() {
-  for await (const observations of fetchAllPages<Observation>(myObservationsURL())) {
-    const features = observations.map(obs => {
-      return new Feature({
-        id: obs.uuid,
-        geometry: new Point(obs.geojson.coordinates),
-        name: obs.taxon?.name,
-      })
-    });
-    observationSource.addFeatures(features);    
-  }
+function observation2feature(obs: Observation): Feature<Point> {
+  return new Feature({
+    id: obs.uuid,
+    geometry: new Point(obs.geojson.coordinates),
+    name: obs.taxon?.name,
+  });
 }
 
-type ResultPage<T> = {
-  total_results: number;
-  page: number;
-  per_page: number;
-  results: [T];
-}
-type Observation = {
-  id: number;
-  description: string | null;
-  geojson: {coordinates: [number, number], type: 'Point'}; // lon, lat
-  photos: [{url: string}],
-  taxon?: {name: string; preferred_common_name: string | null};
-  taxon_geoprivacy: string | null;
-  time_observed_at?: string; // provided one is guaranteed by the query
-  uri: string;
-  uuid: string;
+async function main() {
+  let lastUpdatedAt = Date.parse('1970-01-01T00:00:00Z');
+  const features = [];
+  for await (const observation of eachObservation()) {
+    features.push(observation2feature(observation));
+    const updatedAt = Date.parse(observation.updated_at);
+    if (updatedAt > lastUpdatedAt)
+      lastUpdatedAt = updatedAt;
+  }
+  observationSource.addFeatures(features);
+  const endpoint = myObservationsURL(new Date(lastUpdatedAt));
+  for await (const observations of fetchAllPages<Observation>(endpoint)) {
+    const features = observations.map(observation2feature);
+    observationSource.addFeatures(features);
+    await upsertObservations(observations);
+  }
 }
 
 main();
