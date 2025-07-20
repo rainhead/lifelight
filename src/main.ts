@@ -13,9 +13,11 @@ import VectorSource from 'ol/source/Vector';
 import { Collection } from 'ol';
 import Point from 'ol/geom/Point.js';
 import Feature from 'ol/Feature.js';
+import Select, { SelectEvent } from 'ol/interaction/Select.js';
 import { observationStyle } from './style.ts';
 import { fetchAllPages, myObservationsURL, Observation, observation2feature } from './inaturalist.ts';
 import { eachObservation, upsertObservations } from './db.ts';
+import { handleSheet, setFeatures } from './sheet.ts';
 
 initPWA(document.body);
 
@@ -33,13 +35,28 @@ const observationLayer = new VectorLayer({
   style: observationStyle,
 });
 
+const link = new Link();
+const select = new Select({
+  layers: [observationLayer],
+  hitTolerance: 10,
+  multi: true,
+});
+select.on('select', (e: SelectEvent) => {
+  if (e.selected.length === 0)
+    console.log("All features deselected");
+  for (const feature of e.selected) {
+    console.log(`Selected ${feature.getId()}`);
+  }
+  setFeatures(e.selected);
+});
+
 const view = new View({
   projection: 'EPSG:3857',
   center,
   zoom: 9,
 });
 new OpenLayersMap({
-  interactions: defaultInteractions().extend([new Link()]),
+  interactions: defaultInteractions().extend([link, select]),
   layers: [
     new TileLayer({source: new OSM()}),
     observationLayer,
@@ -47,12 +64,9 @@ new OpenLayersMap({
   target: 'map',
   view,
 });
-// map.addEventListener('moveend', () => {
-//   const extent = view.calculateExtent();
-//   loadObservationsIn(extent);
-// });
 
 async function main() {
+  handleSheet();
   let lastUpdatedAt = Date.parse('1970-01-01T00:00:00Z');
   const features = [];
   for await (const observation of eachObservation()) {

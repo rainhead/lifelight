@@ -20,11 +20,16 @@ export function myObservationsURL(updated_since: Date) {
 }
 
 export function observation2feature(obs: Observation): Feature<Point> {
-  return new Feature({
-    id: obs.uuid,
-    geometry: new Point(obs.geojson.coordinates),
+  const feature = new Feature(new Point(obs.geojson.coordinates));
+  feature.setId(obs.uuid);
+  const props: ObservationFeatureProperties = {
+    id: obs.id,
+    description: obs.description,
     name: obs.taxon?.name,
-  });
+    uri: obs.uri,
+  };
+  feature.setProperties(props);
+  return feature;
 }
 
 export async function fetchPage<T>(url: string, page: number) {
@@ -68,4 +73,10 @@ export type Observation = {
   updated_at: string; // e.g. 2008-05-16T07:46:46+00:00
   uri: string;
   uuid: string;
+}
+export type ObservationFeatureProperties = {
+  id: number;
+  description: string | null;
+  name: string | undefined;
+  uri: string;
 }
