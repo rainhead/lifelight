@@ -3,7 +3,6 @@ import { repeat } from "lit-html/directives/repeat.js";
 import { ObservationFeatureProperties } from "./inaturalist";
 import { FeatureLike } from "ol/Feature";
 
-const sheet = document.getElementById('sheet') as HTMLDivElement;
 const handle = document.getElementById('handle') as HTMLDivElement;
 const info = document.getElementById('info') as HTMLElement;
 
