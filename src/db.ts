@@ -2,7 +2,7 @@ import { DBSchema, IDBPDatabase, openDB } from 'idb';
 import { Observation } from './inaturalist';
 
 const dbName = 'lifelight';
-const version = 4;
+const version = 5;
 
 type ObservationSchema = {
   description: string | null;
@@ -35,7 +35,7 @@ type LifelightDB = IDBPDatabase<LifelightSchema>;
 
 export const dbPromise = openDB<LifelightSchema>(dbName, version, {
   async upgrade(db, oldVersion, _newVersion, _transaction, _event) {
-    if (oldVersion < 4) {
+    if (oldVersion < 5) {
       db.deleteObjectStore('taxa');
       db.deleteObjectStore('users');
       db.deleteObjectStore('observations');
