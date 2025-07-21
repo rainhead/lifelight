@@ -53,10 +53,9 @@ export const dbPromise = openDB<LifelightSchema>(dbName, version, {
 });
 
 export type HydratedObservation = ObservationSchema & {taxon: TaxonSchema | undefined; user: UserSchema}
-export async function* eachObservation(db: LifelightDB) {
-  const txn = db.transaction('observations', 'readonly');
-  for await (const cursor of txn.store) {
-    const obs = cursor.value;
+export async function allObservations(db: LifelightDB): Promise<HydratedObservation[]> {
+  const observations = await db.getAll('observations')
+  return await Promise.all(observations.map(async (obs) => {
     const user = await db.get('users', obs.userId);
     if (!user)
       throw `Couldn't find a user with id ${obs.userId}`;
@@ -67,8 +66,8 @@ export async function* eachObservation(db: LifelightDB) {
         throw `Couldn't find a taxon with id ${obs.taxonId}`;
       hydrated.taxon = taxon;
     }
-    yield hydrated;
-  }
+    return hydrated;
+  }));
 }
 
 export async function lastObservation(db: LifelightDB) {

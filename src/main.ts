@@ -16,7 +16,7 @@ import Feature from 'ol/Feature.js';
 import Select from 'ol/interaction/Select.js';
 import { observationStyle } from './style.ts';
 import { fetchAllPages, importObservation, myObservationsURL, Observation, observation2feature } from './inaturalist.ts';
-import { dbPromise, eachObservation, upsertObservations } from './db.ts';
+import { allObservations, dbPromise, eachObservation, upsertObservations } from './db.ts';
 import { ensureExpanded, handleSheet, setFeatures } from './sheet.ts';
 
 initPWA(document.body);
@@ -78,9 +78,10 @@ async function main() {
   let lastUpdatedAt = new Date(0);
   const features = [];
   const db = await dbPromise;
-  for await (const observation of eachObservation(db)) {
-    features.push(observation2feature(observation));
-    const updatedAt = new Date(observation.updatedAt);
+  const observations = await allObservations(db);
+  for (const obs of observations) {
+    features.push(observation2feature(obs));
+    const updatedAt = new Date(obs.updatedAt);
     if (updatedAt > lastUpdatedAt)
       lastUpdatedAt = updatedAt;
   }
