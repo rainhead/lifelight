@@ -16,7 +16,7 @@ import Feature from 'ol/Feature.js';
 import Select from 'ol/interaction/Select.js';
 import { observationStyle } from './style.ts';
 import { fetchAllPages, importObservation, myObservationsURL, Observation, observation2feature } from './inaturalist.ts';
-import { allObservations, dbPromise, eachObservation, upsertObservations } from './db.ts';
+import { allObservations, dbPromise, upsertObservations } from './db.ts';
 import { ensureExpanded, handleSheet, setFeatures } from './sheet.ts';
 
 initPWA(document.body);
@@ -70,7 +70,7 @@ const map = new OpenLayersMap({
   target: 'map',
   view,
 });
-map.on('loadend', updatePaneFeatures);
+observationSource.on('change', updatePaneFeatures);
 map.on('moveend', updatePaneFeatures);
 
 async function main() {
