@@ -3,7 +3,8 @@
   line-height: 1.5;
   font-weight: 400;
 
-  height: 100vh;
+  box-sizing: border-box;
+  height: 100%;
   margin: 0;
 
   color: rgba(255, 255, 255, 0.87);
@@ -45,6 +46,7 @@ body {
 
 #handle {
   cursor: row-resize;
+  touch-action: none;
 }
 
 #handle-target {
@@ -54,8 +56,12 @@ body {
 }
 
 #info {
-  max-height: 80svh;
   overflow: clip scroll;
+}
+
+.collapsible {
+  /* height: 0px; */
+  max-height: 60svh;
 }
 
 #pwa-toast {

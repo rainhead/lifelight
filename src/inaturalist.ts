@@ -1,9 +1,10 @@
 import Feature from "ol/Feature";
 import Point from 'ol/geom/Point.js';
 import { queryStringAppend } from "./queryStringAppend";
+import { HydratedObservation } from "./db";
 
 const baseURL = 'https://api.inaturalist.org/v2/observations';
-const fieldspec = "(id:!t,geojson:!t,photos:(url:!t),updated_at:!t,taxon:(name:!t,preferred_common_name:!t),taxon_geoprivacy:!t,time_observed_at:!t,uri:!t)";
+const fieldspec = "(id:!t,geojson:!t,photos:(url:!t),updated_at:!t,taxon:(name:!t,preferred_common_name:!t),taxon_geoprivacy:!t,time_observed_at:!t,uri:!t,user:(id:!t,login:!t,name:!t))";
 // const authorizationHeader: HeadersInit = apiToken ? {Authorization: `Bearer ${apiToken}`} : {};
 
 // updated_since: anything you can pass to Date.parse
@@ -19,17 +20,29 @@ export function myObservationsURL(updated_since: Date) {
   return url;
 }
 
-export function observation2feature(obs: Observation): Feature<Point> {
-  const feature = new Feature(new Point(obs.geojson.coordinates));
+export function observation2feature(obs: HydratedObservation): Feature<Point> {
+  const feature = new Feature(new Point([obs.longitude, obs.latitude]));
   feature.setId(obs.uuid);
-  const props: ObservationFeatureProperties = {
-    id: obs.id,
-    description: obs.description,
-    name: obs.taxon?.name,
-    uri: obs.uri,
-  };
-  feature.setProperties(props);
+  feature.setProperties(obs);
   return feature;
+}
+
+export function importObservation(obs: Observation): HydratedObservation {
+    const [longitude, latitude] = (obs.private_geojson ?? obs.geojson).coordinates;
+    const taxon = obs.taxon ? {id: obs.taxon.id, scientificName: obs.taxon.name, commonName: obs.taxon.preferred_common_name} : undefined;
+    return {
+      description: obs.description,
+      id: obs.id,
+      latitude,
+      longitude,
+      taxon,
+      taxonId: taxon?.id || null,
+      updatedAt: Date.parse(obs.updated_at),
+      uri: obs.uri,
+      user: obs.user,
+      userId: obs.user.id,
+      uuid: obs.uuid,
+    };
 }
 
 export async function fetchPage<T>(url: string, page: number) {
@@ -61,22 +74,28 @@ type ResultPage<T> = {
   per_page: number;
   results: [T];
 }
+export type User = {
+  id: number;
+  login: string;
+  name: string | null;
+}
+
+export type Taxon = {
+  id: number;
+  name: string;
+  preferred_common_name: string | null;
+}
 export type Observation = {
   id: number;
   description: string | null;
   geojson: {coordinates: [number, number], type: 'Point'}; // lon, lat
   photos: [{url: string}],
-  private_geojson: {coordinates: [number, number], type: 'Point'}; // lon, lat
-  taxon?: {id: number; name: string; preferred_common_name: string | null};
+  private_geojson?: {coordinates: [number, number], type: 'Point'}; // lon, lat
+  taxon?: Taxon;
   taxon_geoprivacy: string | null;
   time_observed_at?: string; // provided one is guaranteed by the query
   updated_at: string; // e.g. 2008-05-16T07:46:46+00:00
   uri: string;
+  user: User;
   uuid: string;
-}
-export type ObservationFeatureProperties = {
-  id: number;
-  description: string | null;
-  name: string | undefined;
-  uri: string;
 }

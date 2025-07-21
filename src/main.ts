@@ -13,11 +13,11 @@ import VectorSource from 'ol/source/Vector';
 import { Collection } from 'ol';
 import Point from 'ol/geom/Point.js';
 import Feature from 'ol/Feature.js';
-import Select, { SelectEvent } from 'ol/interaction/Select.js';
+import Select from 'ol/interaction/Select.js';
 import { observationStyle } from './style.ts';
-import { fetchAllPages, myObservationsURL, Observation, observation2feature } from './inaturalist.ts';
-import { eachObservation, upsertObservations } from './db.ts';
-import { handleSheet, setFeatures } from './sheet.ts';
+import { fetchAllPages, importObservation, myObservationsURL, Observation, observation2feature } from './inaturalist.ts';
+import { dbPromise, eachObservation, upsertObservations } from './db.ts';
+import { ensureExpanded, handleSheet, setFeatures } from './sheet.ts';
 
 initPWA(document.body);
 
@@ -41,21 +41,27 @@ const select = new Select({
   hitTolerance: 10,
   multi: true,
 });
-select.on('select', (e: SelectEvent) => {
-  if (e.selected.length === 0)
-    console.log("All features deselected");
-  for (const feature of e.selected) {
-    console.log(`Selected ${feature.getId()}`);
+select.on('select', updatePaneFeatures);
+
+function updatePaneFeatures () {
+  const selected = select.getFeatures();
+  if (selected.getLength() > 0) {
+    setFeatures(selected.getArray());
+    ensureExpanded();
+  } else {
+    const extent = map.getView().calculateExtent();
+    const features = observationSource.getFeaturesInExtent(extent);
+    setFeatures(features);
   }
-  setFeatures(e.selected);
-});
+}
+
 
 const view = new View({
   projection: 'EPSG:3857',
   center,
   zoom: 9,
 });
-new OpenLayersMap({
+const map = new OpenLayersMap({
   interactions: defaultInteractions().extend([link, select]),
   layers: [
     new TileLayer({source: new OSM()}),
@@ -64,14 +70,17 @@ new OpenLayersMap({
   target: 'map',
   view,
 });
+map.on('loadend', updatePaneFeatures);
+map.on('moveend', updatePaneFeatures);
 
 async function main() {
   handleSheet();
-  let lastUpdatedAt = Date.parse('1970-01-01T00:00:00Z');
+  let lastUpdatedAt = new Date(0);
   const features = [];
-  for await (const observation of eachObservation()) {
+  const db = await dbPromise;
+  for await (const observation of eachObservation(db)) {
     features.push(observation2feature(observation));
-    const updatedAt = Date.parse(observation.updated_at);
+    const updatedAt = new Date(observation.updatedAt);
     if (updatedAt > lastUpdatedAt)
       lastUpdatedAt = updatedAt;
   }
@@ -79,10 +88,11 @@ async function main() {
 
   const endpoint = myObservationsURL(new Date(lastUpdatedAt));
   let fetchedCount = 0;
-  for await (const observations of fetchAllPages<Observation>(endpoint)) {
+  for await (const iNatObservations of fetchAllPages<Observation>(endpoint)) {
+    const observations = iNatObservations.map(importObservation);
     const features = observations.map(observation2feature);
     observationSource.addFeatures(features);
-    await upsertObservations(observations);
+    await upsertObservations(db, observations);
     fetchedCount += observations.length;
   }
 }
