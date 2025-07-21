@@ -1,6 +1,6 @@
 import './style.css'
 import 'ol/ol.css';
-import { initPWA } from './pwa.ts'
+// import { initPWA } from './pwa.ts'
 import OpenLayersMap from "ol/Map.js";
 import View from "ol/View.js";
 import TileLayer from 'ol/layer/Tile.js';
@@ -19,7 +19,7 @@ import { fetchAllPages, importObservation, myObservationsURL, Observation, obser
 import { allObservations, dbPromise, upsertObservations } from './db.ts';
 import { ensureExpanded, handleSheet, setFeatures } from './sheet.ts';
 
-initPWA(document.body);
+// initPWA(document.body);
 
 // const apiToken = localStorage.getItem('iNaturalistAPIToken');
 
