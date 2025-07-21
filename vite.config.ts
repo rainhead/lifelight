@@ -33,4 +33,7 @@ export default defineConfig({
       type: 'module',
     },
   })],
+  build: {
+    sourcemap: true,
+  }
 })
