@@ -16,7 +16,7 @@ import Feature from 'ol/Feature.js';
 import Select from 'ol/interaction/Select.js';
 import { observationStyle } from './style.ts';
 import { fetchAllPages, importObservation, myObservationsURL, Observation, observation2feature } from './inaturalist.ts';
-import { allObservations, getConnection, upsertObservations } from './db.ts';
+import { allObservations, getConnection, LifelightDB, upsertObservations } from './db.ts';
 import { ensureExpanded, handleSheet, setFeatures } from './sheet.ts';
 
 // initPWA(document.body);
@@ -73,6 +73,18 @@ const map = new OpenLayersMap({
 observationSource.on('change', updatePaneFeatures);
 map.on('moveend', updatePaneFeatures);
 
+async function fetchObservations(db: LifelightDB, since: Date) {
+  const endpoint = myObservationsURL(since);
+  for await (const iNatObservations of fetchAllPages<Observation>(endpoint)) {
+    const observations = iNatObservations.map(importObservation);
+    const features = observations.map(observation2feature);
+    observationSource.addFeatures(features);
+    await upsertObservations(db, observations);
+    updatePaneFeatures();
+  }
+
+}
+
 async function main() {
   handleSheet();
   let lastUpdatedAt = new Date(0);
@@ -86,16 +98,17 @@ async function main() {
       lastUpdatedAt = updatedAt;
   }
   observationSource.addFeatures(features);
-
-  const endpoint = myObservationsURL(new Date(lastUpdatedAt));
-  let fetchedCount = 0;
-  for await (const iNatObservations of fetchAllPages<Observation>(endpoint)) {
-    const observations = iNatObservations.map(importObservation);
-    const features = observations.map(observation2feature);
-    observationSource.addFeatures(features);
-    await upsertObservations(db, observations);
-    fetchedCount += observations.length;
-  }
+  fetchObservations(db, lastUpdatedAt);
 }
+
+document.addEventListener('click', async (e) => {
+  if (!(e.target instanceof HTMLButtonElement))
+    return;
+  if (e.target.name !== 'reload')
+    return;
+  e.preventDefault();
+  const db = await getConnection();
+  await fetchObservations(db, new Date(0));
+});
 
 main();

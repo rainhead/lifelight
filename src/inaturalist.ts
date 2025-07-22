@@ -35,6 +35,8 @@ export function importObservation(obs: Observation): HydratedObservation {
       id: obs.id,
       latitude,
       longitude,
+      observedAt: obs.time_observed_at ? Date.parse(obs.time_observed_at) : null,
+      observedAtVerbatim: obs.time_observed_at || null,
       taxon,
       taxonId: taxon?.id || null,
       updatedAt: Date.parse(obs.updated_at),
@@ -89,6 +91,7 @@ export type Observation = {
   id: number;
   description: string | null;
   geojson: {coordinates: [number, number], type: 'Point'}; // lon, lat
+  observed_on: string | null;
   photos: [{url: string}],
   private_geojson?: {coordinates: [number, number], type: 'Point'}; // lon, lat
   taxon?: Taxon;

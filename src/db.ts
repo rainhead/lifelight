@@ -10,7 +10,8 @@ type ObservationSchema = {
   latitude: number;
   longitude: number;
   taxonId: number | null;
-  observedAt?: number;
+  observedAt: number | null; // timestamp
+  observedAtVerbatim: string | null;
   updatedAt: number;
   uri: string;
   userId: number;
@@ -31,7 +32,7 @@ interface LifelightSchema extends DBSchema {
   taxa: {key: number; value: TaxonSchema, indexes: {byScientificName: string}},
   users: {key: number; value: UserSchema, indexes: {byLogin: string}};
 }
-type LifelightDB = IDBPDatabase<LifelightSchema>;
+export type LifelightDB = IDBPDatabase<LifelightSchema>;
 
 export const getConnection = async () => openDB<LifelightSchema>(dbName, version, {
   async upgrade(db, oldVersion, _newVersion, _transaction, _event) {
