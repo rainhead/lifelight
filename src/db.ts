@@ -56,18 +56,27 @@ export const getConnection = async () => openDB<LifelightSchema>(dbName, version
 export type HydratedObservation = ObservationSchema & {taxon: TaxonSchema | undefined; user: UserSchema}
 export async function allObservations(db: LifelightDB): Promise<HydratedObservation[]> {
   const observations = await db.getAll('observations')
+  const users: {[k: number]: UserSchema} = {};
+  const taxa: {[k: number]: TaxonSchema} = {};
   return await Promise.all(observations.map(async (obs) => {
-    const user = await db.get('users', obs.userId);
-    if (!user)
-      throw `Couldn't find a user with id ${obs.userId}`;
-    const hydrated: HydratedObservation = {...obs, taxon: undefined, user};
-    if (obs.taxonId) {
-      const taxon = await db.get('taxa', obs.taxonId);
-      if (!taxon)
-        throw `Couldn't find a taxon with id ${obs.taxonId}`;
-      hydrated.taxon = taxon;
+    let user = users[obs.userId];
+    if (!user) {
+      user = await db.get('users', obs.userId);
+      if (!user)
+        throw `Couldn't find a user with id ${obs.userId}`;
+      users[user.id] = user;
     }
-    return hydrated;
+    let taxon: TaxonSchema | undefined;
+    if (obs.taxonId) {
+      taxon = taxa[obs.taxonId];
+      if (!taxon) {
+        taxon = await db.get('taxa', obs.taxonId);
+        if (!taxon)
+          throw `Couldn't find a taxon with id ${obs.taxonId}`;
+        taxa[taxon.id] = taxon;
+      }
+    }
+    return {...obs, user, taxon};
   }));
 }
 
