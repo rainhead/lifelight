@@ -38,10 +38,14 @@ body {
   align-items: stretch;
 
   position: fixed;
-  left: 0.5rem;
-  right: 0.5rem;
   bottom: 0;
+  left: 50%;
+  margin: 0 auto;
+  transform: translate(-50%, 0);
   padding: 0 0.5rem;
+
+  min-width: 20rem;
+  max-width: 95vw;
 }
 
 #handle {
@@ -102,8 +106,30 @@ button#pwa-refresh {
 }
 
 #map {
-  width: 100%;
   height: 100%;
+  position: absolute;
+  width: 100%;
+}
+
+#queries {
+  top: 0.5rem;
+  position: absolute;
+  right: 0.5rem;
+}
+
+.ss-menu {
+  background-color: var(--ol-background-color);
+  color: var(--ol-subtle-foreground-color);
+  display: none;
+  max-width: 80vw;
+  margin-top: 2px;
+  min-width: 10rem;
+  position: absolute;
+  right: 0;
+  top: 100%;
+}
+.ss-menu.show {
+  display: inherit;
 }
 
 ul {
