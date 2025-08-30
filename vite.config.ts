@@ -35,5 +35,9 @@ export default defineConfig({
   })],
   build: {
     sourcemap: true,
-  }
+  },
+  server: {
+    port: 5177,
+    strictPort: true,
+  },
 })
